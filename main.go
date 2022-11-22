@@ -15,9 +15,9 @@ type Service struct {
 // Start the dispacher and make de executor available to receive tasks.
 func (s *Service) Run() {
 	if s.async {
-		go s.dispacher.dispatch()
-	} else {
 		go s.dispacher.asyncDispatch()
+	} else {
+		go s.dispacher.dispatch()
 	}
 }
 
@@ -49,8 +49,9 @@ func NewService(maxWorkers, maxQueueDepth int) *Service {
 
 // Make dispatcher run async.
 // This mean the underliying go routine will block until a worker release the queue.
-func (s *Service) WithAsyncDispatch() {
+func (s *Service) WithAsyncDispatch() *Service {
 	s.async = true
+	return s
 }
 
 type worker struct {
