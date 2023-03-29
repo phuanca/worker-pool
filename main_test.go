@@ -79,5 +79,22 @@ func TestDelayedRunDispacher(t *testing.T) {
 	if doneCount == numOfTaks {
 		t.Errorf("must be at least one task incomplete. Count: %d", doneCount)
 	}
+}
 
+func BenchmarkSendTask(b *testing.B) {
+	// given
+	taskDuration := time.Duration(10 * time.Millisecond)
+	workers := 50
+	queueDepth := 200 //buffered channel
+
+	// when
+	undertest := NewService(workers, queueDepth)
+	defer undertest.Exit()
+
+	undertest.Run()
+
+	for n := 0; n < b.N; n++ {
+		task := dummyTask{done: false, taskDuration: taskDuration}
+		undertest.Send(&task)
+	}
 }

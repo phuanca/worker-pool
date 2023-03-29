@@ -8,21 +8,22 @@ type Task interface {
 
 type Service struct {
 	dispacher dispatcher
-	async     bool
-	Exit      context.CancelFunc
+	exit      context.CancelFunc
 }
 
 // Start the dispacher and make de executor available to receive tasks.
 func (s *Service) Run() {
-	if s.async {
-		go s.dispacher.asyncDispatch()
-	} else {
-		go s.dispacher.dispatch()
-	}
+	go s.dispacher.dispatch()
+
+}
+
+// Stop all workers and exit.
+func (s *Service) Exit() {
+	s.exit()
 }
 
 // Send one task to the dispacher.
-// This block if the queue depth reach his limit and option "safe=true".
+// This block if the queue depth reach his limit.
 func (s *Service) Send(task Task) {
 	s.dispacher.taskQueue <- task
 }
@@ -44,14 +45,7 @@ func NewService(maxWorkers, maxQueueDepth int) *Service {
 		go w.start()
 	}
 
-	return &Service{dispacher: dispatcher, async: false, Exit: cancel}
-}
-
-// Make dispatcher run async.
-// This mean the underliying go routine will block until a worker release the queue.
-func (s *Service) WithAsyncDispatch() *Service {
-	s.async = true
-	return s
+	return &Service{dispacher: dispatcher, exit: cancel}
 }
 
 type worker struct {
@@ -78,22 +72,6 @@ type dispatcher struct {
 	ctx       context.Context
 	taskQueue chan Task
 	workPool  chan chan Task
-}
-
-func (d *dispatcher) asyncDispatch() {
-	for {
-		select {
-		case task := <-d.taskQueue:
-			go func(task Task) {
-				workQueue := <-d.workPool
-
-				workQueue <- task
-
-			}(task)
-		case <-d.ctx.Done():
-			return
-		}
-	}
 }
 
 func (d *dispatcher) dispatch() {
